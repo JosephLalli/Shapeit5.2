@@ -24,8 +24,6 @@
 #include <io/haplotype_reader.h>
 
 void switcher::read_files_and_initialise() {
-	vrb.title("Initialization:");
-
 	//step1: Read input files
 	haplotype_reader(H, options["region"].as < string > (), options["thread"].as < int > ()).readHaplotypes(options["validation"].as < string > (), options["estimation"].as < string > (), options["frequency"].as < string > ());
 

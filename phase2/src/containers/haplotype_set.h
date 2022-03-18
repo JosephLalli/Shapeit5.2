@@ -23,90 +23,39 @@
 #define _HAPLOTYPE_SET_H
 
 #include <utils/otools.h>
-
 #include <containers/bitmatrix.h>
-#include <containers/genotype_set.h>
 #include <containers/variant_map.h>
 
 class haplotype_set {
 public:
-	//
-	unsigned int n_common_variants;
-	unsigned int n_rare_variants;
-	unsigned int n_total_variants;
-	unsigned int n_total_haplotypes;
-	unsigned int n_target_haplotypes;
-	unsigned int n_reference_haplotypes;
-	unsigned int n_total_samples;
-	unsigned int n_target_samples;
-	unsigned int n_reference_samples;
+	//Counts
+	unsigned int n_scaffold_variants;			//#variants in scaffold
+	unsigned int n_rare_variants;				//#variants rare to be phased
+	unsigned int n_common_variants;				//#variants common to be phased (e.g. indels)
+	unsigned int n_total_variants;				//#variants in total
+	unsigned int n_haplotypes;					//#haplotypes
+	unsigned int n_samples;						//#samples
 
-	//Haplotype Data [COMMONS]
-	bitmatrix Hhap;					// Bit matrix of haplotypes (haplotype first). Transposed version of H_opt_var.
-	bitmatrix Hvar;					// Bit matrix of haplotypes (variant first). Transposed version of H_opt_hap.
+	//Scaffold data
+	bitmatrix HShap;							//Bit matrix of haplotypes (haplotype first).
+	bitmatrix HSvar;							//Bit matrix of haplotypes (variant first).
 
-	//Haplotype Data [RARES]
-	vector < vector < unsigned int > > Shap;
-	vector < vector < unsigned int > > Svar;
-	vector < bool > flag_common;
+	//Unphased data / common sites
+	bitmatrix HChap;							//Bit matrix of haplotypes (haplotype first).
+	bitmatrix HCvar;							//Bit matrix of haplotypes (variant first).
 
-	//PBWT parameters
-	double pbwt_modulo;				// Modulo used to store PBWT indexes (--pbwt-modulo)
-	unsigned long pbwt_depth;		// #neighbours in the PBWT to use for conditioning (--pbwt-depth)
-	unsigned long pbwt_mac;			// Minor Allele Count to consider in PBWT pass (--pbwt-mac)
-	double pbwt_mdr;				// Missinga Data Rate to consider in PBWT pass (--pbwt-mdr)
-	unsigned int nthreads;			// Number of threads (--thread)
-
-	//PBWT indexes & arrays
-	unsigned long pbwt_nstored;		//#variants with PBWT indexes stored
-	vector < double > pbwt_cm;		//Variants at which PBWT is evaluated
-	vector < int > pbwt_grp;		//Variant groups based on cm positions
-	vector < int > pbwt_evaluated;	//Variants at which PBWT is evaluated
-	vector < int > pbwt_stored;		//Variants at which PBWT is stored
-	vector < int > pbwt_parray;		//PBWT prefix array
-	vector < int > pbwt_darray;		//PBWT divergence array
-	//vector < int > pbwt_neighbours; //Closest neighbours
-	vector < vector < unsigned int > > pbwt_neighbours;
-
-	//PBWT IBD2 protect
-	vector < vector < unsigned int > > bannedPairs;
+	//Unphased data / rare sites
+	vector < vector < unsigned int > > HRhap;	//Sparse matrix of haplotypes (haplotype first).
+	vector < vector < unsigned int > > HRvar;	//Sparse matrix of haplotypes (variant first).
 
 	//CONSTRUCTOR/DESTRUCTOR/INITIALIZATION
 	haplotype_set();
 	~haplotype_set();
 	void clear();
-
-	//
-	void allocate(unsigned int,unsigned int , unsigned int , unsigned int, vector < bool > &);
-
-	//PBWT routines
-	void parametrizePBWT(int, double, int, double, int);
-	void initializePBWTmapping(variant_map &);
-	void updatePBWTmapping();
-	void allocatePBWTarrays();
-	void selectPBWTarrays();
-	//void transposePBWTarrays();
-
-	//IBD2 routines
-	void mergeIBD2constraints();
-	bool checkIBD2matching(int, int);
+	void allocate(unsigned int,unsigned int , unsigned int , unsigned int, variant_map &);
 
 	//Haplotype routines
-	void updateHaplotypes(genotype_set & G, bool first_time = false);
-	void transposeHaplotypes_H2V(bool full);
-	void transposeHaplotypes_V2H(bool full);
+	void transposeHaplotypes_H2V();
+	void transposeHaplotypes_V2H();
 };
-
-
-inline
-bool haplotype_set::checkIBD2matching(int mh, int ch) {
-	int mi = min(mh/2,ch/2);
-	int ci = max(mh/2,ch/2);
-	// Prevents self copying, who knows ?
-	if (mi == ci) return false;
-	// Prevents copying for IBD2 individuals
-	for (int i = 0 ; i < bannedPairs[mi].size() && bannedPairs[mi][i] <= ci; i ++) if (bannedPairs[mi][i] == ci) return false;
-	return true;
-}
-
 #endif
