@@ -32,7 +32,7 @@
 template <typename T>
 using aligned_vector32 = std::vector<T, boost::alignment::aligned_allocator < T, 32 > >;
 
-class haplotype_segment {
+class haplotype_segment_single {
 private:
 	//EXTERNAL DATA
 	hmm_parameters & M;
@@ -106,8 +106,8 @@ private:
 
 public:
 	//CONSTRUCTOR/DESTRUCTOR
-	haplotype_segment(genotype *, bitmatrix &, vector < unsigned int > &, window &, hmm_parameters &);
-	~haplotype_segment();
+	haplotype_segment_single(genotype *, bitmatrix &, vector < unsigned int > &, window &, hmm_parameters &);
+	~haplotype_segment_single();
 
 	//void fetch();
 	void forward();
@@ -119,7 +119,7 @@ public:
 /*******************************************************************************/
 
 inline
-void haplotype_segment::INIT_HOM() {
+void haplotype_segment_single::INIT_HOM() {
 	bool ag = VAR_GET_HAP0(MOD2(curr_abs_locus), G->Variants[DIV2(curr_abs_locus)]);
 	__m256 _sum = _mm256_set1_ps(0.0f);
 	for(int k = 0, i = 0 ; k != n_cond_haps ; ++k, i += HAP_NUMBER) {
@@ -133,7 +133,7 @@ void haplotype_segment::INIT_HOM() {
 }
 
 inline
-bool haplotype_segment::RUN_HOM(char rare_allele) {
+bool haplotype_segment_single::RUN_HOM(char rare_allele) {
 	bool ag = VAR_GET_HAP0(MOD2(curr_abs_locus), G->Variants[DIV2(curr_abs_locus)]);
 	if (rare_allele < 0 || ag == rare_allele) {
 		__m256 _sum = _mm256_set1_ps(0.0f);
@@ -158,7 +158,7 @@ bool haplotype_segment::RUN_HOM(char rare_allele) {
 }
 
 inline
-void haplotype_segment::COLLAPSE_HOM() {
+void haplotype_segment_single::COLLAPSE_HOM() {
 	bool ag = VAR_GET_HAP0(MOD2(curr_abs_locus), G->Variants[DIV2(curr_abs_locus)]);
 	__m256 _sum = _mm256_set1_ps(0.0f);
 	__m256 _tFreq = _mm256_set1_ps(yt / n_cond_haps);					//Check divide by probSumT here!
@@ -181,18 +181,17 @@ void haplotype_segment::COLLAPSE_HOM() {
 /*******************************************************************************/
 
 inline
-void haplotype_segment::INIT_AMB() {
+void haplotype_segment_single::INIT_AMB() {
 	unsigned char amb_code = G->Ambiguous[curr_abs_ambiguous];
 	for (int h = 0 ; h < HAP_NUMBER ; h ++) {
 		g0[h] = HAP_GET(amb_code,h)?M.ed/M.ee:1.0f;
 		g1[h] = HAP_GET(amb_code,h)?1.0f:M.ed/M.ee;
 	}
 	__m256 _sum = _mm256_set1_ps(0.0f);
-	__m256 _emit0 = _mm256_loadu_ps(&g0[0]);
-	__m256 _emit1 = _mm256_loadu_ps(&g1[0]);
+	__m256 _emit[2]; _emit[0] = _mm256_loadu_ps(&g0[0]); _emit[1] = _mm256_loadu_ps(&g1[0]);
 	for(int k = 0, i = 0 ; k != n_cond_haps ; ++k, i += HAP_NUMBER) {
 		bool ah = Hvar.get(curr_rel_locus+curr_rel_locus_offset, k);
-		__m256 _prob = ah?_emit1:_emit0;
+		__m256 _prob = _emit[ah];
 		_sum = _mm256_add_ps(_sum, _prob);
 		_mm256_store_ps(&prob[i], _prob);
 	}
@@ -201,7 +200,7 @@ void haplotype_segment::INIT_AMB() {
 }
 
 inline
-void haplotype_segment::RUN_AMB() {
+void haplotype_segment_single::RUN_AMB() {
 	unsigned char amb_code = G->Ambiguous[curr_abs_ambiguous];
 	for (int h = 0 ; h < HAP_NUMBER ; h ++) {
 		g0[h] = HAP_GET(amb_code,h)?M.ed/M.ee:1.0f;
@@ -225,8 +224,48 @@ void haplotype_segment::RUN_AMB() {
 	probSumT = probSumH[0] + probSumH[1] + probSumH[2] + probSumH[3] + probSumH[4] + probSumH[5] + probSumH[6] + probSumH[7];
 }
 
+/*
 inline
-void haplotype_segment::COLLAPSE_AMB() {
+void haplotype_segment_single::RUN_AMB() {
+	unsigned char amb_code = G->Ambiguous[curr_abs_ambiguous];
+	for (int h = 0 ; h < HAP_NUMBER ; h ++) {
+		g0[h] = HAP_GET(amb_code,h)?M.ed/M.ee:1.0f;
+		g1[h] = HAP_GET(amb_code,h)?1.0f:M.ed/M.ee;
+	}
+	__m256d _sum0 = _mm256_set1_pd(0.0f);
+	__m256d _sum1 = _mm256_set1_pd(0.0f);
+	__m256d _factor = _mm256_set1_pd(yt / (n_cond_haps * probSumT));
+	__m256d _tFreq0 = _mm256_load_pd(&probSumH[0]);
+	__m256d _tFreq1 = _mm256_load_pd(&probSumH[4]);
+	_tFreq0 = _mm256_mul_pd(_tFreq0, _factor);
+	_tFreq1 = _mm256_mul_pd(_tFreq1, _factor);
+	__m256d _nt = _mm256_set1_pd(nt / probSumT);
+	__m256d _emit0[2], _emit1[2];
+	_emit0[0] = _mm256_loadu_pd(&g0[0]);
+	_emit0[1] = _mm256_loadu_pd(&g1[0]);
+	_emit1[0] = _mm256_loadu_pd(&g0[4]);
+	_emit1[1] = _mm256_loadu_pd(&g1[4]);
+	for(int k = 0, i = 0 ; k != n_cond_haps ; ++k, i += HAP_NUMBER) {
+		bool ah = Hvar.get(curr_rel_locus+curr_rel_locus_offset, k);
+		__m256d _prob0 = _mm256_load_pd(&prob[i+0]);
+		__m256d _prob1 = _mm256_load_pd(&prob[i+4]);
+		_prob0 = _mm256_fmadd_pd(_prob0, _nt, _tFreq0);
+		_prob1 = _mm256_fmadd_pd(_prob1, _nt, _tFreq1);
+		_prob0 = _mm256_mul_pd(_prob0, _emit0[ah]);
+		_prob1 = _mm256_mul_pd(_prob1, _emit1[ah]);
+		_sum0 = _mm256_add_pd(_sum0, _prob0);
+		_sum1 = _mm256_add_pd(_sum1, _prob1);
+		_mm256_store_pd(&prob[i+0], _prob0);
+		_mm256_store_pd(&prob[i+4], _prob1);
+	}
+	_mm256_store_pd(&probSumH[0], _sum0);
+	_mm256_store_pd(&probSumH[4], _sum1);
+	probSumT = probSumH[0] + probSumH[1] + probSumH[2] + probSumH[3] + probSumH[4] + probSumH[5] + probSumH[6] + probSumH[7];
+}
+*/
+
+inline
+void haplotype_segment_single::COLLAPSE_AMB() {
 	unsigned char amb_code = G->Ambiguous[curr_abs_ambiguous];
 	for (int h = 0 ; h < HAP_NUMBER ; h ++) {
 		g0[h] = HAP_GET(amb_code,h)?M.ed/M.ee:1.0f;
@@ -253,14 +292,14 @@ void haplotype_segment::COLLAPSE_AMB() {
 /*******************************************************************************/
 
 inline
-void haplotype_segment::INIT_MIS() {
+void haplotype_segment_single::INIT_MIS() {
 	fill(prob.begin(), prob.end(), 1.0f/(HAP_NUMBER * n_cond_haps));
 	fill(probSumH.begin(), probSumH.end(), 1.0f/HAP_NUMBER);
 	probSumT = 1.0f;
 }
 
 inline
-void haplotype_segment::RUN_MIS() {
+void haplotype_segment_single::RUN_MIS() {
 	__m256 _sum = _mm256_set1_ps(0.0f);
 	__m256 _factor = _mm256_set1_ps(yt / (n_cond_haps * probSumT));
 	__m256 _tFreq = _mm256_load_ps(&probSumH[0]);
@@ -277,7 +316,7 @@ void haplotype_segment::RUN_MIS() {
 }
 
 inline
-void haplotype_segment::COLLAPSE_MIS() {
+void haplotype_segment_single::COLLAPSE_MIS() {
 	__m256 _sum = _mm256_set1_ps(0.0f);
 	__m256 _tFreq = _mm256_set1_ps(yt / n_cond_haps);
 	__m256 _nt = _mm256_set1_ps(nt / probSumT);
@@ -296,7 +335,7 @@ void haplotype_segment::COLLAPSE_MIS() {
 /*******************************************************************************/
 
 inline
-void haplotype_segment::SUMK() {
+void haplotype_segment_single::SUMK() {
 	for(int k = 0, i = 0 ; k != n_cond_haps ; ++k, i += HAP_NUMBER) {
 		probSumK[k] = prob[i+0] + prob[i+1] + prob[i+2] + prob[i+3] + prob[i+4] + prob[i+5] + prob[i+6] + prob[i+7];
 	}
@@ -307,7 +346,7 @@ void haplotype_segment::SUMK() {
 /*******************************************************************************/
 
 inline
-bool haplotype_segment::TRANS_HAP() {
+bool haplotype_segment_single::TRANS_HAP() {
 	sumHProbs = 0.0f;
 	unsigned int  curr_rel_segment_index = curr_segment_index-segment_first;
 	yt = M.getForwardTransProb(AlphaLocus[curr_rel_segment_index - 1], prev_abs_locus);
@@ -328,7 +367,7 @@ bool haplotype_segment::TRANS_HAP() {
 }
 
 inline
-bool haplotype_segment::TRANS_DIP_MULT() {
+bool haplotype_segment_single::TRANS_DIP_MULT() {
 	sumDProbs= 0.0f;
 	double scaling = 1.0 / sumHProbs;
 	for (int pd = 0, t = 0 ; pd < 64 ; ++pd) {
@@ -346,7 +385,7 @@ bool haplotype_segment::TRANS_DIP_MULT() {
 }
 
 inline
-bool haplotype_segment::TRANS_DIP_ADD() {
+bool haplotype_segment_single::TRANS_DIP_ADD() {
 	sumDProbs = 0.0f;
 	double scaling = 1.0 / sumHProbs;
 	for (int pd = 0, t = 0 ; pd < 64 ; ++pd) {
@@ -364,7 +403,7 @@ bool haplotype_segment::TRANS_DIP_ADD() {
 }
 
 inline
-void haplotype_segment::IMPUTE(vector < float > & missing_probabilities) {
+void haplotype_segment_single::IMPUTE(vector < float > & missing_probabilities) {
 	__m256 _sum = _mm256_set1_ps(0.0f);
 	__m256 _sumA [2]; _sumA[0] = _mm256_set1_ps(0.0f); _sumA[1] = _mm256_set1_ps(0.0f);
 	__m256 _alphaSum = _mm256_load_ps(&AlphaSumMissing[curr_rel_missing][0]);
