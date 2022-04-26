@@ -22,7 +22,7 @@
 
 #include <containers/conditioning_set/conditioning_set_header.h>
 
-void conditioning_set::select(variant_map & V, genotype_set & G) {
+void conditioning_set::select1(variant_map & V, genotype_set & G) {
 	tac.clock();
 
 	npushes = 0;
@@ -31,8 +31,9 @@ void conditioning_set::select(variant_map & V, genotype_set & G) {
 	vector < int > A = vector < int > (n_haplotypes, 0);
 	vector < int > B = vector < int > (n_haplotypes, 0);
 	vector < int > R = vector < int > (n_haplotypes, 0);
-	vector < int > M = vector < int > (2 * depth_common * n_haplotypes, -1);
+	vector < int > M = vector < int > (depth_common * n_haplotypes, -1);
 	iota(A.begin(), A.end(), 0);
+	random_shuffle(A.begin(), A.end());
 
 	//Select new sites at which to trigger storage
 	vector < vector < int > > candidates = vector < vector < int > > (sites_pbwt_grouping.back() + 1);
@@ -154,29 +155,29 @@ void conditioning_set::storeCommon(vector < int > & A, vector < int > & M) {
 				add_guess1 = (hap_guess1/2 != chap/2);
 			} else add_guess1 = 0;
 			if (add_guess0 && add_guess1) {
-				if (hap_guess0 != M[chap * 2 * depth_common + n_added]) {
+				if (hap_guess0 != M[chap * depth_common + n_added]) {
 					indexes_pbwt_neighbour_serialized.push_back(pair < unsigned int, unsigned int > (chap, hap_guess0));
-					M[chap * 2 * depth_common + n_added] = hap_guess0;
+					M[chap * depth_common + n_added] = hap_guess0;
 					npushes++;
 				} else ncollisions++;
 				offset0++; n_added++;
-				if (hap_guess1 != M[chap * 2 * depth_common + n_added]) {
+				if (hap_guess1 != M[chap * depth_common + n_added]) {
 					indexes_pbwt_neighbour_serialized.push_back(pair < unsigned int, unsigned int > (chap, hap_guess1));
-					M[chap * 2 * depth_common + n_added] = hap_guess1;
+					M[chap * depth_common + n_added] = hap_guess1;
 					npushes++;
 				} else ncollisions++;
 				offset1++; n_added++;
 			} else if (add_guess0) {
-				if (hap_guess0 != M[chap * 2 * depth_common + n_added]) {
+				if (hap_guess0 != M[chap * depth_common + n_added]) {
 					indexes_pbwt_neighbour_serialized.push_back(pair < unsigned int, unsigned int > (chap, hap_guess0));
-					M[chap * 2 * depth_common + n_added] = hap_guess0;
+					M[chap * depth_common + n_added] = hap_guess0;
 					npushes++;
 				} else ncollisions++;
 				offset0++; n_added++;
 			} else if (add_guess1) {
-				if (hap_guess1 != M[chap * 2 * depth_common + n_added]) {
+				if (hap_guess1 != M[chap * depth_common + n_added]) {
 					indexes_pbwt_neighbour_serialized.push_back(pair < unsigned int, unsigned int > (chap, hap_guess1));
-					M[chap * 2 * depth_common + n_added] = hap_guess1;
+					M[chap * depth_common + n_added] = hap_guess1;
 					npushes++;
 				} else ncollisions++;
 				offset1++; n_added++;
@@ -187,3 +188,4 @@ void conditioning_set::storeCommon(vector < int > & A, vector < int > & M) {
 		}
 	}
 }
+
