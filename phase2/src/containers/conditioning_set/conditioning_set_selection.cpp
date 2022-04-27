@@ -22,7 +22,7 @@
 
 #include <containers/conditioning_set/conditioning_set_header.h>
 
-void conditioning_set::select1(variant_map & V, genotype_set & G) {
+void conditioning_set::select(variant_map & V, genotype_set & G) {
 	tac.clock();
 
 	npushes = 0;
