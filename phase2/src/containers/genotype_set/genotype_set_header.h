@@ -25,7 +25,7 @@
 #include <utils/otools.h>
 
 #include <containers/bitmatrix.h>
-#include <containers/variant_map.h>
+#include <objects/hmm_parameters.h>
 
 #include <io/pedigree_reader.h>
 
@@ -36,30 +36,39 @@ public:
 	static float ee;
 	static float ed;
 
-	unsigned int idx : 27;
-	unsigned int het : 1;
-	unsigned int mis : 1;
-
-	unsigned int pha : 1;
-	unsigned int al0 : 1;
-	unsigned int al1 : 1;
-
-	float ph0, ph1;
+	unsigned int idx : 27;	//Index of the non Major/Major genotype
+	unsigned int het : 1;	//Is it het?
+	unsigned int mis : 1;	//Is it missing?	If none of the two, it is then Minor/Minor
+	unsigned int al0 : 1;	//What's the allele on haplotype 0?
+	unsigned int al1 : 1;	//What's the allele on haplotype 1?
+	unsigned int pha : 1;	//Is the genotype phased?
+	float prob;				//Probability
 
 	rare_genotype() {
 		idx = het = mis = al0 = al1 = pha = 0;
-		ph0 = ph1 = 0.0f;
+		prob = -1.0f;
 	}
 
 	rare_genotype(unsigned int _idx, bool _het, bool _mis, bool _al0, bool _al1) {
 		idx = _idx; het = _het; mis = _mis; al0 = _al0; al1 = _al1;
 		pha = (!mis && (al0==al1));
-		ph0 = ph1 = 0.0f;
+
+		if (al0 != al1) {
+			if (rng.flipCoin()) {
+				al0 = 0;
+				al1 = 1;
+			} else {
+				al0 = 1;
+				al1 = 0;
+			}
+		}
+
+		prob = pha?1.0f:-1.0f;
 	}
 
 	~rare_genotype() {
 		idx = het = mis = al0 = al1 = pha = 0;
-		ph0 = ph1 = 0.0f;
+		prob = -1.0f;
 	}
 
 	bool operator < (const rare_genotype & rg) const {
@@ -67,58 +76,70 @@ public:
 	}
 
 	void phase(unsigned int g) {
-		pha = 1;
-		switch (g) {
-		case 0:	al0 = 0; al1 = 0; break;
-		case 1:	al0 = 0; al1 = 1; break;
-		case 2:	al0 = 1; al1 = 0; break;
-		case 3:	al0 = 1; al1 = 1; break;
-		}
-	}
-
-	void randomize() {
-		if (het) {
-			bool flip = rng.flipCoin();
-			al0 = flip?true:false;
-			al1 = flip?false:true;
-		}
-
-		if (mis) {
-			switch (rng.getInt(4)) {
-			case 0:	al0 = false; al1 = false; break;
-			case 1:	al0 = false; al1 = true; break;
-			case 2:	al0 = true; al1 = false; break;
-			case 3:	al0 = true; al1 = true; break;
+		if (!pha) {
+			switch (g) {
+			case 0:	al0 = 0; al1 = 0; break;
+			case 1:	al0 = 0; al1 = 1; break;
+			case 2:	al0 = 1; al1 = 0; break;
+			case 3:	al0 = 1; al1 = 1; break;
 			}
 		}
 	}
 
-	void computeProbs(vector < float > & gprobs) {
-		assert(gprobs.size() == 4);
-
-		float p00 = 1.0f - ph0;
-		float p01 = ph0;
-		float p10 = 1.0f - ph1;
-		float p11 = ph1;
-
-		if (het) {
-			gprobs[0] = 0.0f;
-			gprobs[1] = (p00*ee + p01*ed) * (p10*ed + p11*ee);
-			gprobs[2] = (p00*ed + p01*ee) * (p10*ee + p11*ed);
-			gprobs[3] = 0.0f;
-		} else if (mis) {
-			gprobs[0] = (p00*ee + p01*ed) * (p10*ee + p11*ed);
-			gprobs[1] = (p00*ee + p01*ed) * (p10*ed + p11*ee);
-			gprobs[2] = (p00*ed + p01*ee) * (p10*ee + p11*ed);
-			gprobs[3] = (p00*ed + p01*ee) * (p10*ed + p11*ee);
+	void randomize() {
+		if (!pha) {
+			if (het) phase(rng.getInt(2) + 1);
+			if (mis) phase(rng.getInt(4));
 		}
+	}
 
-		float scale = 1.0f / (gprobs[0] + gprobs[1] + gprobs[2] + gprobs[3]);
+	void phase(float prb0, float prb1) {
+		if (!pha && (het || mis)) {
+			vector < double > gprobs = vector < double > (4, 0.0f);
 
-		gprobs[0] *= scale;
-		gprobs[1] *= scale;
-		gprobs[2] *= scale;
-		gprobs[3] *= scale;
+
+			float p01 = max(prb0, numeric_limits<float>::min());
+			float p00 = max(1.0f - prb0, numeric_limits<float>::min());
+			float p11 = max(prb1, numeric_limits<float>::min());
+			float p10 = max(1.0f - prb1, numeric_limits<float>::min());
+
+			/*
+			if (het) {
+				gprobs[0] = 0.0f;
+				gprobs[1] = (p00*ee + p01*ed) * (p10*ed + p11*ee);
+				gprobs[2] = (p00*ed + p01*ee) * (p10*ee + p11*ed);
+				gprobs[3] = 0.0f;
+			} else {
+				gprobs[0] = (p00*ee + p01*ed) * (p10*ee + p11*ed);
+				gprobs[1] = (p00*ee + p01*ed) * (p10*ed + p11*ee);
+				gprobs[2] = (p00*ed + p01*ee) * (p10*ee + p11*ed);
+				gprobs[3] = (p00*ed + p01*ee) * (p10*ed + p11*ee);
+			}
+			*/
+
+			if (het) {
+				gprobs[0] = 0.0f;
+				gprobs[1] = p00 * p11;
+				gprobs[2] = p01 * p10;
+				gprobs[3] = 0.0f;
+			} else {
+				gprobs[0] = p00 * p10;
+				gprobs[1] = p00 * p11;
+				gprobs[2] = p01 * p10;
+				gprobs[3] = p01 * p11;
+			}
+
+			//cout << stb.str(gprobs, 3) << endl;
+			int maxg = alg.imax(gprobs);
+			switch (maxg) {
+			case 0:	al0 = 0; al1 = 0; break;
+			case 1:	al0 = 0; al1 = 1; break;
+			case 2:	al0 = 1; al1 = 0; break;
+			case 3:	al0 = 1; al1 = 1; break;
+			}
+			prob = gprobs[maxg] / (gprobs[0] + gprobs[1] + gprobs[2] + gprobs[3]);
+			//cout << stb.str(prob, 6) << endl;
+		}
 	}
 };
 
@@ -129,6 +150,14 @@ public:
 	unsigned int n_scaffold_variants;			//#variants rare to be phased
 	unsigned int n_rare_variants;				//#variants rare to be phased
 	unsigned int n_samples;						//#samples
+
+	unsigned int nmiss_total;
+	unsigned int nmiss_imputation;
+	unsigned int nmiss_singleton;
+	unsigned int nhets_total;
+	unsigned int nhets_families;
+	unsigned int nhets_imputation;
+	unsigned int nhets_coalescent;
 
 	//Sample IDs
 	vector < string > names;
@@ -144,24 +173,33 @@ public:
 	//
 	genotype_set();
 	~genotype_set();
+
+	//BASIC
 	void clear();
 	void allocate(variant_map &, unsigned int, unsigned int , unsigned int);
-	void transpose();
 	void mapUnphasedOntoScaffold(int ind, vector < vector < unsigned int > > & map);
-	void impute(unsigned int, unsigned int, vector < float > &, vector < float > &, vector < unsigned int > &);
 
-	//
+	//TRANSPOSE
+	void fillup_by_transpose_V2I();
+	void merge_by_transpose_I2V();
+
+
+	//PUSH
 	void pushRareMissing(unsigned int vr, unsigned int i, bool major);
 	void pushRareHet(unsigned int vr, unsigned int i);
 	void pushRareHom(unsigned int vr, unsigned int i, bool major);
-	void imputeMonomorphic();
-	void randomizeSingleton();
-	void phase(unsigned long int & n_phased, unsigned long int & n_total, float);
 
-	void scaffoldTrio(int ikid, int ifather, int imother, vector < unsigned int > &counts);
-	void scaffoldDuoMother(int ikid, int imother, vector < unsigned int > &counts);
-	void scaffoldDuoFather(int ikid, int ifather, vector < unsigned int > &counts);
-	void scaffoldUsingPedigrees(pedigree_reader & pr);
+	//IMPUTE
+	void imputeMonomorphic();
+	void phaseLiAndStephens(unsigned int, unsigned int, aligned_vector32 < float > &, aligned_vector32 < float > &, vector < unsigned int > &, float);
+	void phaseCoalescentViterbi(unsigned int, vector < int > &, vector < int > &, hmm_parameters &);
+	void phaseCoalescentViterbi2(unsigned int, double, double);
+
+	//TRIOS [UNTESTED]
+	void phaseTrio(int ikid, int ifather, int imother, vector < unsigned int > &counts);
+	void phaseDuoMother(int ikid, int imother, vector < unsigned int > &counts);
+	void phaseDuoFather(int ikid, int ifather, vector < unsigned int > &counts);
+	void phaseUsingPedigrees(pedigree_reader & pr);
 };
 
 inline
