@@ -47,7 +47,8 @@ public:
 
 
 	//IO
-	void writeHaplotypes(std::string foutput, bool);
+	void writeHaplotypesPlain(std::string foutput, bool);
+	void writeHaplotypesSparse(std::string foutput);
 };
 
 #endif
