@@ -20,7 +20,7 @@
  * SOFTWARE.
  ******************************************************************************/
 
-#include <objects/bitvector.h>
+#include <containers/bitvector.h>
 
 using namespace std;
 
