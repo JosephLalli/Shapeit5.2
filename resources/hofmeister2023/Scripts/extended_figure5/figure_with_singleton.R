@@ -1,10 +1,11 @@
-setwd('~/Dropbox/SHAPEIT5/Reviews/Copy_with_singleton_suppFigure_9_confidence_filters/')
+setwd('~/Dropbox/SHAPEIT5/Final_revision/Figures/Scripts/extended_figure5')
 library(ggplot2)
 library(RColorBrewer)
 COLpair = brewer.pal(12,"Paired")
 COLdiff = brewer.pal(8,"Set1")
 COLsp = brewer.pal(10,"Spectral")
 COLblues = brewer.pal(11,"RdBu")
+CB= c(brewer.pal(11,"RdYlBu")[1:5],brewer.pal(11,"RdYlBu")[8:11]) 
 
 put.fig.letter <- function(label, location="topleft", x=NULL, y=NULL, 
                            offset=c(0, 0), ...) {
@@ -29,18 +30,18 @@ put.fig.letter <- function(label, location="topleft", x=NULL, y=NULL,
 }
 
 log10.axis <- function(side, at, ...) {
-    at.minor <- log10(outer(1:9, 10^(min(at):max(at))))
-    lab <- sapply(at, function(i) as.expression(bquote(10^ .(i))))
-    axis(side=side, at=at.minor, labels=NA, tcl=par("tcl")*0.5, ...)
-    #axis(side=side, at=at, labels=lab, ...)
+  at.minor <- log10(outer(1:9, 10^(min(at):max(at))))
+  lab <- sapply(at, function(i) as.expression(bquote(10^ .(i))))
+  axis(side=side, at=at.minor, labels=NA, tcl=par("tcl")*0.5, ...)
+  #axis(side=side, at=at, labels=lab, ...)
 }
 
 
 #PLOT1
-f2<-read.table('Summary_WGS_f2.txt', hea=T)
-S<-read.table('Summary_WGS_S.txt', hea=T)
+f2<-read.table('../../Source_data/Extended_fig5/Summary_WGS_f2.txt', hea=T)
+S<-read.table('../../Source_data/Extended_fig5/Summary_WGS_S.txt', hea=T)
 f2_copy<-f2
-pdf("SupFigure9.pdf", 10, 10)
+jpeg("../../Extended_figures/Extended_figure5.with_singleton.jpeg", 3000, 3000, quality = 100, res=300)
 par(mfrow=c(2,2))
 f2<-f2[f2$prob!=1,]
 f2<-f2[f2$bin<10,]
@@ -65,16 +66,16 @@ log10.axis(2, at=seq(-1, 2)) ##REMOVE
 C=0
 for (PROB in probs[-length(probs)]){
   C=C+1
-  points(X, log10(f2$ser[f2$prob==PROB]), type="o", pch=20, col=COLsp[C], lwd=2)
+  points(X, log10(f2$ser[f2$prob==PROB]), type="o", pch=20, col=CB[C], lwd=2)
   
 }
-legend("topright", fill=COLsp[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
+legend("topright", fill=CB[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
 
 
 #PLOT2
 #pdf(paste("Figure1_WESarray_probability_threshold1.v2.1.pdf", sep=""), 15,5)
 #par(mfrow=c(1,3))
-S<-read.table('Summary_WGS_S.txt', hea=T)
+S<-read.table('../../Source_data/Extended_fig5/Summary_WGS_S.txt', hea=T)
 #S<-S[S$bin>1,]
 #X=c(1,2,3,3.5,4,4.5,5,5.5,5.9)
 X=1:(length(unique(S$bin)))
@@ -90,15 +91,15 @@ axis(2, at=seq(0,100,5), label=seq(0,100,5), las=2)
 C=0
 for (BIN in unique(S$prob)){
   C=C+1
-  points(X, 100-S$prop[S$prob==BIN]*100, type="o", pch=20, col=COLsp[C], lwd=2)
+  points(X, 100-S$prop[S$prob==BIN]*100, type="o", pch=20, col=CB[C], lwd=2)
 }
-legend("topright", fill=COLsp[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
+legend("topright", fill=CB[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
 #294
 
 
 #PLOT3
-f2<-read.table('../../Data/WES/Summary_data/Summary_WES_f2.txt', hea=T)
-S<-read.table('../../Data/WES/Summary_data/Summary_WES_S.txt', hea=T)
+f2<-read.table('../../Source_data/Extended_fig5/Summary_WES_f2.txt', hea=T)
+S<-read.table('../../Source_data/Extended_fig5/Summary_WES_S.txt', hea=T)
 f2_copy<-f2
 f2<-f2[f2$prob!=1,]
 f2<-f2[f2$bin<10,]
@@ -123,17 +124,17 @@ log10.axis(2, at=seq(-1, 2)) ##REMOVE
 C=0
 for (PROB in probs[-length(probs)]){
   C=C+1
-  points(X, log10(f2$ser[f2$prob==PROB]), type="o", pch=20, col=COLsp[C], lwd=2)
+  points(X, log10(f2$ser[f2$prob==PROB]), type="o", pch=20, col=CB[C], lwd=2)
   
 }
-legend("topright", fill=COLsp[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
+legend("topright", fill=CB[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
 
 
 
 #PLOT4
 #pdf(paste("Figure1_WESarray_probability_threshold1.v2.1.pdf", sep=""), 15,5)
 #par(mfrow=c(1,3))
-S<-read.table('../../Data/WES/Summary_data/Summary_WES_S.txt', hea=T)
+S<-read.table('../../Source_data/Extended_fig5/Summary_WES_S.txt', hea=T)
 #S<-S[S$bin>1,]
 #X=c(1,2,3,3.5,4,4.5,5,5.5,5.9)
 X=1:(length(unique(S$bin)))
@@ -149,13 +150,16 @@ axis(2, at=seq(0,100,5), label=seq(0,100,5), las=2)
 C=0
 for (BIN in unique(S$prob)){
   C=C+1
-  points(X, 100-S$prop[S$prob==BIN]*100, type="o", pch=20, col=COLsp[C], lwd=2)
+  points(X, 100-S$prop[S$prob==BIN]*100, type="o", pch=20, col=CB[C], lwd=2)
 }
-legend("topright", fill=COLsp[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
+legend("topright", fill=CB[1:10], legend=c(probs[-length(probs)]), title="Filter", bg="white", cex=0.9)
 #894
 
 
 dev.off()
+
+
+
 
 
 
