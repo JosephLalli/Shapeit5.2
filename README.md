@@ -1,8 +1,10 @@
 # Segmented HAPlotype Estimation and Imputation Tools version 5 (SHAPEIT5)
 
-[![Build](https://github.com/odelaneau/shapeit5/actions/workflows/build.yml/badge.svg)](https://github.com/odelaneau/shapeit5/actions) [![Build_Pages](https://github.com/odelaneau/shapeit5/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/odelaneau/shapeit5/actions)
+[![Build](https://github.com/JosephLalli/Shapeit5.2/actions/workflows/build.yml/badge.svg)](https://github.com/JosephLalli/Shapeit5.2/actions) [![Build_Pages](https://github.com/JosephLalli/Shapeit5.2/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/JosephLalli/Shapeit5.2/actions)
 
 SHAPEIT5 estimates haplotypes in large datasets, with a special focus on rare variants.
+
+The prior repository was taken down because past commits included UK Biobank data. Shapeit5.2 is the current iteration. The two repositories will be merged after clearance that this repository is free of protected information. Sorry for the inconvenience.
 
 This copy includes Joseph Lalli's modified switch counter used in the phasing_T2T
 analyses. The original static Linux executable is
@@ -42,7 +44,7 @@ Hofmeister RJ, Ribeiro DM, Rubinacci S., Delaneau O. [Accurate rare variant phas
 
 Documentation, installation instructions and tutorials can be found at:
 
-[https://odelaneau.github.io/shapeit5/](https://odelaneau.github.io/shapeit5/)
+[https://github.com/JosephLalli/Shapeit5.2](https://github.com/JosephLalli/Shapeit5.2)
 
 ## License
 
