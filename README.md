@@ -4,6 +4,17 @@
 
 SHAPEIT5 estimates haplotypes in large datasets, with a special focus on rare variants.
 
+This copy includes Joseph Lalli's modified switch counter used in the phasing_T2T
+analyses. The original static Linux executable is
+[`static_bins/SHAPEIT5_switch_static_JLL`](static_bins/SHAPEIT5_switch_static_JLL).
+Run it with `./static_bins/SHAPEIT5_switch_static_JLL --help`.
+Building `switch/` also uses the modified counter source.
+
+The manuscript cites the original fork commit `e6dd007`. The modified source file
+and original executable were recovered from `JosephLalli/phasing_T2T` commit
+`9b1ae67c844d0c561b8115849c018b0820d5d231`. This copy combines that source with
+the cleaned upstream code; the complete original fork commit was not recovered.
+
 - **docker**: all script needed to build a docker file comprising all binaries
 - **docs**: documentation in html
 - **ligate**: ligate multiple phased BCF/VCF files into a chromosome length file
